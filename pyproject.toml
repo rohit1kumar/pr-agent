@@ -1,0 +1,7 @@
+[project]
+name = "PR_Agent"
+version = "0.1.0"
+description = "Autonomous code review agent system that uses AI to analyze GitHub pull requests"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
