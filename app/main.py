@@ -22,8 +22,9 @@ async def analyze_pr(request: PRAnalysisRequest):
             f"Received analysis request for PR #{request.pr_number} from {request.repo_url}"
         )
 
+
         return {
-            "task_id": "123",
+            "task_id": "task",
             "status": "pending",
             "message": "Analysis task created successfully",
         }
