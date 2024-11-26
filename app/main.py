@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, status
 import logging
 from schema import PRAnalysisRequest, TaskStatusResponse, AnalysisResultResponse
+from tasks import analyze_code_task
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -21,10 +22,15 @@ async def analyze_pr(request: PRAnalysisRequest):
         logger.info(
             f"Received analysis request for PR #{request.pr_number} from {request.repo_url}"
         )
-
+        task = analyze_code_task.delay(
+            request.repo_url,
+            request.pr_number,
+            request.github_token,
+        )
+        logger.info(f"Analysis task created with ID: {task.id}")
 
         return {
-            "task_id": "task",
+            "task_id": task.id,
             "status": "pending",
             "message": "Analysis task created successfully",
         }
