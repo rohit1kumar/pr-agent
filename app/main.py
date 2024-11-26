@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, status
 import logging
 from schema import PRAnalysisRequest, TaskStatusResponse, AnalysisResultResponse
 from tasks import analyze_code_task
+from celery.result import AsyncResult
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -31,13 +32,15 @@ async def analyze_pr(request: PRAnalysisRequest):
 
         return {
             "task_id": task.id,
-            "status": "pending",
-            "message": "Analysis task created successfully",
+            "status": "PENDING",
         }
 
     except Exception as e:
         logger.error(f"Error creating analysis task: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
 @app.get(
@@ -47,7 +50,12 @@ async def analyze_pr(request: PRAnalysisRequest):
 )
 async def get_task_status(task_id: str):
     """Get the status of an analysis task."""
-    pass
+    task = AsyncResult(task_id)
+
+    return {
+        "task_id": task.id,
+        "status": task.status,
+    }
 
 
 @app.get(
@@ -57,4 +65,17 @@ async def get_task_status(task_id: str):
 )
 async def get_results(task_id: str):
     """Get the results of an analysis task."""
-    pass
+
+    task = AsyncResult(task_id)
+    if task.status == "SUCCESS":
+        return {
+            "task_id": task.id,
+            "status": task.status,
+            "results": task.result,
+        }
+
+    return {
+        "task_id": task.id,
+        "status": task.status,
+        "results": {},
+    }

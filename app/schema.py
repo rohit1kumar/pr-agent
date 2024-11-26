@@ -11,7 +11,6 @@ class PRAnalysisRequest(BaseModel):
 class TaskStatusResponse(BaseModel):
     task_id: str
     status: str
-    message: str
 
 
 class AnalysisResultResponse(BaseModel):
