@@ -1,13 +1,11 @@
 import os
-import logging
 from dotenv import load_dotenv
 from celery import Celery
+from celery.utils.log import get_task_logger
 import ssl
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
+
+logger = get_task_logger(__name__)
 load_dotenv()
 
 celery_app = Celery(__name__)
