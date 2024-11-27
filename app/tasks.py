@@ -37,19 +37,21 @@ celery_app.conf.update(
 )
 
 
-CODE_ANALYSIS_PROMPT = """You are an expert code reviewer. Analyze the following code for:
+CODE_ANALYSIS_PROMPT = """You are an expert code reviewer for GitHub pull requests, here + denotes added lines and - denotes removed lines. Analyze the following code for:
 1. Code style and formatting issues
 2. Potential bugs or errors
 3. Performance improvements
 4. Security concerns
 5. Best practices violations
 
+Language: {language}
+
+Status of the file: {status}
+
 Code to analyze:
 ```
 {code_content}
 ```
-
-Language: {language}
 
 Provide a detailed analysis in the following JSON format in very brief:
 {{
@@ -71,9 +73,13 @@ Provide a detailed analysis in the following JSON format in very brief:
 """
 
 
-def get_code_analysis_prompt(code_content: str, language: str):
+def get_code_analysis_prompt(code_content: str, language: str, status: str):
     prompt = ChatPromptTemplate.from_template(CODE_ANALYSIS_PROMPT)
-    return prompt.format_messages(code_content=code_content, language=language)
+    return prompt.format_messages(
+        code_content=code_content,
+        language=language,
+        status=status,
+    )
 
 
 # LLM Response Schema
@@ -132,7 +138,7 @@ def detect_language(filename: str) -> str:
     return extension_map.get(ext, "Unknown")
 
 
-def analyze_file(file_content: str, filename: str) -> Dict[str, Any]:
+def analyze_file(file_content: str, filename: str, file_status: str) -> Dict[str, Any]:
     try:
         logger.info(f"Starting analysis for file: {filename}")
 
@@ -140,8 +146,11 @@ def analyze_file(file_content: str, filename: str) -> Dict[str, Any]:
         language = detect_language(filename)
 
         # Create prompt
-        formated_prompt = get_code_analysis_prompt(file_content, language)
-
+        formated_prompt = get_code_analysis_prompt(
+            file_content,
+            language,
+            file_status,
+        )
         # Get analysis from LLM
         llm = ChatOpenAI(
             model="gpt-4o-mini",
@@ -196,40 +205,24 @@ def fetch_pr_files(
         owner, repo_name = match.groups()
 
         # Initialize GitHub client
-        g = Github(token) if token else Github()
+        gh = Github(token) if token else Github()
 
         # Get repository and PR
-        repo: Repository = g.get_repo(f"{owner}/{repo_name}")
+        repo: Repository = gh.get_repo(f"{owner}/{repo_name}")
         pr: PullRequest = repo.get_pull(pr_number)
 
         files = []
         for file in pr.get_files():
-            try:
-                # Get file content
-                content = repo.get_contents(file.filename, ref=pr.head.sha)
-                if isinstance(content, list):
-                    # Skip directories
-                    continue
-
-                # Decode content
-                file_content = base64.b64decode(content.content).decode("utf-8")
-
-                files.append(
-                    {
-                        "name": file.filename,
-                        "content": file_content,
-                        "status": file.status,
-                        "additions": file.additions,
-                        "deletions": file.deletions,
-                        "changes": file.changes,
-                    }
-                )
-            except Exception as e:
-                logger.warning(
-                    f"Error fetching content for file {file.filename}: {str(e)}"
-                )
-                continue
-
+            files.append(
+                {
+                    "name": file.filename,
+                    "content": file.patch,
+                    "status": file.status,
+                    "additions": file.additions,
+                    "deletions": file.deletions,
+                    "changes": file.changes,
+                }
+            )
         logger.info(f"Successfully fetched {len(files)} files from PR")
         return files
 
@@ -254,7 +247,9 @@ def analyze_code_task(repo_url: str, pr_number: int, github_token: str | None = 
         critical_issues = 0
 
         for file_info in pr_files:
-            result = analyze_file(file_info["content"], file_info["name"])
+            result = analyze_file(
+                file_info["content"], file_info["name"], file_info["status"]
+            )
             analysis_results.append(result)
 
             # Update totals
