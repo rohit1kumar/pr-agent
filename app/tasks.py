@@ -57,18 +57,13 @@ Provide a detailed analysis in the following JSON format in very brief:
 {{
     "issues": [
         {{
-            "type": "style|bug|performance|security|best_practice",
+            "type": "style|bug|performance|best_practice",
             "line": <line_number>,
             "description": "Detailed description of the issue",
             "suggestion": "Specific suggestion for improvement",
             "severity": "critical|high|medium|low"
         }}
-    ],
-    "summary": {{
-        "total_issues": <number>,
-        "critical_issues": <number>,
-        "overview": "Brief summary of main findings"
-    }}
+    ]
 }}
 """
 
@@ -87,7 +82,6 @@ class IssueTypeEnums(str, Enum):
     style = "style"
     bug = "bug"
     performance = "performance"
-    security = "security"
     best_practice = "best_practice"
 
 
@@ -100,7 +94,7 @@ class IssueSeverityEnums(str, Enum):
 
 class Issue(BaseModel):
     type: IssueTypeEnums = Field(
-        description="Type of issue found, choose from style, bug, performance, security, best_practice"
+        description="Type of issue found, choose from style, bug, performance, best_practice"
     )
     line: int = Field(description="Line number where the issue is found")
     description: str = Field(description="Detailed description of the issue")
@@ -113,12 +107,11 @@ class Issue(BaseModel):
 class Summary(BaseModel):
     total_issues: int = Field(description="Total number of issues found")
     critical_issues: int = Field(description="Number of critical issues found")
-    overview: str = Field(description="Brief summary of main findings")
+    total_files: int = Field(description="Total number of files analyzed")
 
 
 class LLMResponseSchema(BaseModel):
     issues: List[Issue] = Field(description="List of code analysis issues")
-    summary: Summary = Field(description="Summary of code analysis")
 
 
 def detect_language(filename: str) -> str:
@@ -128,7 +121,6 @@ def detect_language(filename: str) -> str:
         ".js": "JavaScript",
         ".ts": "TypeScript",
         ".go": "Go",
-        ".cs": "C#",
         ".html": "HTML",
         ".css": "CSS",
         ".tsx": "TypeScript React",
@@ -138,7 +130,7 @@ def detect_language(filename: str) -> str:
     return extension_map.get(ext, "Unknown")
 
 
-def analyze_file(file_content: str, filename: str, file_status: str) -> Dict[str, Any]:
+def analyze_file(file_content: str, filename: str, file_status: str)-> Dict[str, Any]:
     try:
         logger.info(f"Starting analysis for file: {filename}")
 
@@ -158,33 +150,21 @@ def analyze_file(file_content: str, filename: str, file_status: str) -> Dict[str
             api_key=os.environ.get("OPENAI_API_KEY", None),
         )
 
-        analysis_result = {}
+        response = {}
         try:
             llm = llm.with_structured_output(LLMResponseSchema, method="json_mode")
-            analysis_result = llm.invoke(formated_prompt)
-            if isinstance(analysis_result, LLMResponseSchema):
-                analysis_result = analysis_result.model_dump()
+            response = llm.invoke(formated_prompt)
+            if isinstance(response, LLMResponseSchema):
+                response = response.model_dump()
 
         except Exception as e:
             logger.error(f"Error parsing LLM response: {str(e)}")
-            analysis_result = {
-                "issues": [],
-                "summary": {
-                    "total_issues": 0,
-                    "critical_issues": 0,
-                    "overview": "Error analyzing file",
-                },
-            }
+            response = {"issues": []}
 
-        # Add file metadata
-        analysis_result["file_info"] = {
-            "name": filename,
-            "language": language,
-            "size_bytes": len(file_content),
-        }
+        response["filename"] = filename  # type: ignore
 
         logger.info(f"Completed analysis for file: {filename}")
-        return analysis_result
+        return response
 
     except Exception as e:
         logger.error(f"Error in analyze_file: {str(e)}")
@@ -246,27 +226,27 @@ def analyze_code_task(repo_url: str, pr_number: int, github_token: str | None = 
         total_issues = 0
         critical_issues = 0
 
-        for file_info in pr_files:
+        for pr_file in pr_files:
             result = analyze_file(
-                file_info["content"], file_info["name"], file_info["status"]
+                pr_file["content"], pr_file["name"], pr_file["status"]
             )
             analysis_results.append(result)
 
             # Update totals
-            total_issues += result["summary"]["total_issues"]
-            critical_issues += result["summary"]["critical_issues"]
+            total_issues += len(result["issues"])
+            for issue in result["issues"]:
+                if issue["severity"] == "critical":
+                    critical_issues += 1
 
         # Create final report
-        final_result = {
+        return {
             "files": analysis_results,
             "summary": {
                 "total_files": len(pr_files),
                 "total_issues": total_issues,
                 "critical_issues": critical_issues,
-                "overview": f"Analyzed {len(pr_files)} files, found {total_issues} issues ({critical_issues} critical)",
             },
         }
-        return final_result
 
     except Exception as e:
         logger.error(f"Error in code analysis: {str(e)}")
