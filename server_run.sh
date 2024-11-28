@@ -2,4 +2,4 @@
 # !/bin/bash
 
 # start server
-fastapi dev
+fastapi run
