@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, status
 import logging
-from schema import PRAnalysisRequest, TaskStatusResponse, AnalysisResultResponse
-from tasks import analyze_code_task
+from app.schemas import PRAnalysisRequest, TaskStatusResponse, AnalysisResultResponse
+from app.tasks import analyze_code_task
 from celery.result import AsyncResult
 
 logging.basicConfig(
