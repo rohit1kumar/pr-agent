@@ -1,31 +1,9 @@
-import os
-import ssl
-from celery import Celery
-from dotenv import load_dotenv
 from celery.utils.log import get_task_logger
 from app.services.gh import GitHubService
 from app.services.analyzer import AICodeAnalysisService
+from app.celery_conf import celery_app
 
-load_dotenv()
 logger = get_task_logger(__name__)
-celery_app = Celery(__name__)
-
-ssl_options = {"ssl_cert_reqs": ssl.CERT_NONE}
-connection_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
-
-if connection_url is None:
-    raise ValueError("REDIS_URL environment variable must be set")
-
-if connection_url.startswith("rediss://"):
-    ssl_options = {"ssl_cert_reqs": ssl.CERT_REQUIRED}
-
-celery_app.conf.update(
-    broker_url=connection_url,
-    result_backend=connection_url,
-    broker_use_ssl=ssl_options,
-    redis_backend_use_ssl=ssl_options,
-    broker_connection_retry_on_startup=True,
-)
 
 
 @celery_app.task(name="analyze_code_task")
@@ -35,7 +13,6 @@ def analyze_code_task(repo_url: str, pr_number: int, github_token: str | None = 
     try:
         logger.info(f"Starting code analysis for PR #{pr_number}")
 
-        # Fetch files from PR
         gh = GitHubService(github_token)
         pr_files = gh.get_pr_files(repo_url, pr_number)
 
