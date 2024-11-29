@@ -4,12 +4,12 @@
 
 
 ### Project Setup
-1. clone `git clone https://github.com/rohit1kumar/pr-agent.git`
+1. clone `git clone https://github.com/rohit1kumar/pr-agent.git && cd pr-agent`
 2. create `.env` using `cp .env.example .env` and update the values
     ```bash
     OPENAI_API_KEY=your_openai_token
     ```
-3. run `docker-compose up --build` to start the server
+3. run `docker-compose up --build` to start the services
 
 ### API Documentation
 API docs are available at `http://localhost:8000/docs`
