@@ -6,9 +6,11 @@
 ### Project Setup
 1. clone `git clone https://github.com/rohit1kumar/pr-agent.git && cd pr-agent`
 2. create `.env` using `cp .env.example .env` and update the values
+
     ```bash
     OPENAI_API_KEY=your_openai_token
     ```
+
 3. run `docker-compose up --build` to start the services
 
 ### API Documentation
@@ -48,3 +50,13 @@ API docs are available at `http://localhost:8000/docs`
 ### Future Improvements
 1. Adding better AI models for better code analysis
 2. Creating GitHub App & responding to PRs using webhooks
+
+
+### Bonus Points Todos
+- [x]  Docker configuration
+- [x]  Result caching system
+- [x]  Structured logging
+- [x]  Multi-language support
+- [x]  Rate limiting
+- [ ]  GitHub webhook support
+- [ ]  Live deployment (e.g., Railway, Render, etc.)
