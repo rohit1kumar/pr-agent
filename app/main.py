@@ -39,7 +39,7 @@ async def analyze_pr(request: PRAnalysisRequest):
         logger.error(f"Error creating analysis task: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
+            detail="Internal Server Error, failed to create analysis task",
         )
 
 
@@ -50,12 +50,19 @@ async def analyze_pr(request: PRAnalysisRequest):
 )
 async def get_task_status(task_id: str):
     """Get the status of an analysis task."""
-    task = AsyncResult(task_id)
+    try:
+        task = AsyncResult(task_id)
 
-    return {
-        "task_id": task.id,
-        "status": task.status,
-    }
+        return {
+            "task_id": task.id,
+            "status": task.status,
+        }
+    except Exception as e:
+        logger.error(f"Error getting task status: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error, failed to get task status",
+        )
 
 
 @app.get(
@@ -65,17 +72,23 @@ async def get_task_status(task_id: str):
 )
 async def get_results(task_id: str):
     """Get the results of an analysis task."""
+    try:
+        task = AsyncResult(task_id)
+        if task.status == "SUCCESS":
+            return {
+                "task_id": task.id,
+                "status": task.status,
+                "results": task.result,
+            }
 
-    task = AsyncResult(task_id)
-    if task.status == "SUCCESS":
         return {
             "task_id": task.id,
             "status": task.status,
-            "results": task.result,
+            "results": {},
         }
-
-    return {
-        "task_id": task.id,
-        "status": task.status,
-        "results": {},
-    }
+    except Exception as e:
+        logger.error(f"Error getting task results: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal Server Error, failed to get task results",
+        )

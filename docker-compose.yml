@@ -1,35 +1,36 @@
 version: '3.8'
 
 services:
-  redis:
-    image: redis:7.4.1-alpine
-    ports:
-      - 6379:6379
-    volumes:
-      - redis_data:/data
-
   web:
     build:
       context: .
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    volumes:
-      - .:/app
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
     ports:
       - 8000:8000
     depends_on:
       - redis
+      - worker
+    command: ./scripts/server.sh
 
   worker:
     build:
       context: .
-    command: celery -A app.tasks worker --loglevel=info
-    volumes:
-      - .:/app
+      dockerfile: Dockerfile
     environment:
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://redis:6379/0
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
     depends_on:
       - redis
+    command: ./scripts/worker.sh
 
-volumes:
-  redis_data:
+  redis:
+    image: redis:7.4.1-alpine
+    ports:
+      - 6379:6379
