@@ -14,6 +14,31 @@
 ### API Documentation
 API docs are available at `http://localhost:8000/docs`
 
+1. Create task
+    ```bash
+    curl --request POST \
+    --url http://localhost:8000/analyze-pr \
+    --header 'content-type: application/json' \
+    --data '{
+        "repo_url": "<repo_url>",
+        "pr_number": "<pr_number>",
+    }'
+
+    ```
+2. Get status (use task_id from step 1)
+    ```bash
+    curl --request GET \
+    --url http://127.0.0.1:8000/status/<task_id> \
+    --header 'content-type: application/json'
+    ```
+
+3. Get result (use task_id from step 1)
+    ```bash
+    curl --request GET \
+    --url http://127.0.0.1:8000/results/<task_id> \
+    --header 'content-type: application/json'
+    ```
+
 ### Design Decisions
 1. FastAPI for the API server with redis based rate limiting
 2. Celery for background tasks and Redis as a message broker & backend
