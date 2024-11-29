@@ -3,13 +3,28 @@ import logging
 from app.schemas import PRAnalysisRequest, TaskStatusResponse, AnalysisResultResponse
 from app.tasks import analyze_code_task
 from celery.result import AsyncResult
+from app.config import settings
+import redis
+from fastapi_redis_rate_limiter import (
+    RedisRateLimiterMiddleware,
+    RedisClient as RateLimitClient,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
+
 app = FastAPI(title="PR Agent API")
+
+rate_limit_client = RateLimitClient(redis.from_url(settings.REDIS_URL))
+app.add_middleware(
+    RedisRateLimiterMiddleware,
+    redis_client=rate_limit_client,
+    limit=settings.RATE_LIMIT_REQUESTS,
+    window=settings.RATE_LIMIT_WINDOW,
+)
 
 
 @app.post(
