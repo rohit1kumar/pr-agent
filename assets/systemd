@@ -1,0 +1,18 @@
+sudo vim /etc/systemd/system/worker_pr_agent.service
+sudo systemctl daemon-reload # reload
+sudo systemctl start worker_pr_agent # start
+sudo systemctl enable worker_pr_agent # enable to start on boot
+sudo systemctl stop worker_pr_agent # stop
+journalctl -fu api_pr_agent.service # logs
+
+[Unit]
+Description=Celery worker for pr agent API
+After=network.target
+[Service]
+User=root
+Group=www-data
+WorkingDirectory=/root/projects/pr-agent
+ExecStart=/root/projects/pr-agent/.venv/bin/celery -A app.tasks worker --loglevel=info --concurrency=1 --max-memory-per-child=12000
+Restart=always
+[Install]
+WantedBy=multi-user.target
